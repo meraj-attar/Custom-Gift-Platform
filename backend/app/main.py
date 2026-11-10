@@ -1,8 +1,10 @@
 from contextlib import asynccontextmanager
+import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 
 from app.api import (
     admin,
@@ -15,7 +17,14 @@ from app.api import (
 )
 from app.core.config import settings
 from app.core.database import Base, engine
+from app.core.logging import setup_logging
+from app.middleware.rate_limit import RateLimitMiddleware
+from app.middleware.request_id import RequestIdMiddleware
+from app.middleware.security import SecurityHeadersMiddleware
 from app.seed import seed_database
+
+setup_logging()
+logger = logging.getLogger("customgift.main")
 
 
 @asynccontextmanager
@@ -44,14 +53,16 @@ async def lifespan(_: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version="2.0.0",
-    description=(
-        "REST API for the CustomGift personalized "
-        "e-commerce platform."
-    ),
+    description="REST API for the CustomGift personalized e-commerce platform.",
     lifespan=lifespan,
 )
 
+# Custom Middlewares
+app.add_middleware(RequestIdMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RateLimitMiddleware)
 
+# CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -59,7 +70,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 app.mount(
     "/media/products",
@@ -69,7 +79,6 @@ app.mount(
     ),
     name="product-media",
 )
-
 
 # API routes
 app.include_router(
@@ -119,6 +128,25 @@ def root():
 
 @app.get("/health")
 def health():
+    """Liveness probe: verifies process is alive and accepting HTTP traffic."""
     return {
         "status": "ok",
     }
+
+
+@app.get("/health/ready")
+def readiness():
+    """Readiness probe: verifies backend can connect to and query database."""
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return {
+            "status": "ready",
+            "database": "connected",
+        }
+    except Exception as exc:
+        logger.error("Readiness check failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database connection is not ready",
+        )

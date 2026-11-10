@@ -639,3 +639,31 @@ textarea { resize: vertical; min-height: 95px; }
 @media (max-width: 480px) {
   .detail-wishlist-button { width: 100%; }
 }
+
+/* Form validation and error states */
+.field-error { display: block; color: #dc2626; font-size: 12px; margin-top: 4px; font-weight: 500; }
+input:invalid:not(:placeholder-shown), textarea:invalid:not(:placeholder-shown) { border-color: #fca5a5; }
+
+/* Enhanced Shop Filters & Sorting */
+.shop-filters-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; background: white; padding: 14px 18px; border-radius: 18px; border: 1px solid var(--line); margin-bottom: 22px; }
+.shop-filters-left { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.shop-filters-right { display: flex; align-items: center; gap: 12px; }
+.price-inputs { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.price-inputs input { width: 85px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 10px; font-size: 13px; }
+.price-inputs input:focus { border-color: var(--purple); outline: none; }
+.in-stock-label { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: var(--ink); cursor: pointer; user-select: none; }
+.in-stock-label input { accent-color: var(--purple); width: 16px; height: 16px; }
+.sort-dropdown { padding: 8px 14px; border: 1px solid var(--line); border-radius: 12px; background: white; font-size: 13px; font-weight: 600; color: var(--ink); cursor: pointer; outline: none; }
+.sort-dropdown:focus { border-color: var(--purple); }
+.reset-btn { border: 1px solid var(--line); background: #fdfafd; padding: 8px 14px; border-radius: 12px; font-size: 13px; color: #7a7082; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; transition: .2s ease; }
+.reset-btn:hover { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
+.results-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; font-size: 14px; color: var(--muted); }
+
+/* Pagination Controls */
+.pagination-wrap { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 44px 0 20px; flex-wrap: wrap; }
+.pagination-wrap button { min-width: 40px; height: 40px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line); background: white; color: var(--ink); font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; transition: .15s ease; }
+.pagination-wrap button:hover:not(:disabled) { border-color: var(--purple); color: var(--purple); background: var(--purple-soft); }
+.pagination-wrap button.active { background: var(--purple); color: white; border-color: var(--purple); font-weight: 700; box-shadow: 0 4px 12px rgba(109,61,245,.25); }
+.pagination-wrap button:disabled { opacity: .45; cursor: not-allowed; }
+.pagination-info { font-size: 13px; color: var(--muted); width: 100%; text-align: center; margin-top: 6px; }
+

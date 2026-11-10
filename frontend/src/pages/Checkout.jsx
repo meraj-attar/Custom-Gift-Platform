@@ -20,6 +20,16 @@ import api, {
   getErrorMessage,
   resolveImageUrl,
 } from '../services/api'
+import {
+  ADDRESS_MAX_LENGTH,
+  EMAIL_MAX_LENGTH,
+  NAME_MAX_LENGTH,
+  PHONE_MAX_LENGTH,
+  validateEmail,
+  validatePhone,
+  validatePincode,
+  validateText,
+} from '../utils/validators'
 
 
 function loadRazorpayScript() {
@@ -128,8 +138,9 @@ export default function Checkout() {
     payment_method: 'cod',
   })
 
-  const [busy, setBusy] =
-    useState(false)
+  const [errors, setErrors] = useState({})
+  const [touched, setTouched] = useState({})
+  const [busy, setBusy] = useState(false)
 
   if (!items.length) {
     return (
@@ -140,14 +151,42 @@ export default function Checkout() {
     )
   }
 
-  const field = (
-    key,
-    value,
-  ) => {
+  const validateField = (key, value) => {
+    switch (key) {
+      case 'name':
+        return validateText(value, 'Full name', 2, NAME_MAX_LENGTH, true)
+      case 'phone':
+        return validatePhone(value, true)
+      case 'email':
+        return validateEmail(value)
+      case 'address':
+        return validateText(value, 'Address', 5, ADDRESS_MAX_LENGTH, true)
+      case 'city':
+        return validateText(value, 'City', 2, 100, true)
+      case 'state':
+        return validateText(value, 'State', 2, 100, true)
+      case 'pincode':
+        return validatePincode(value)
+      default:
+        return null
+    }
+  }
+
+  const handleBlur = (key) => {
+    setTouched((prev) => ({ ...prev, [key]: true }))
+    const err = validateField(key, form[key])
+    setErrors((prev) => ({ ...prev, [key]: err }))
+  }
+
+  const field = (key, value) => {
     setForm((current) => ({
       ...current,
       [key]: value,
     }))
+    if (touched[key]) {
+      const err = validateField(key, value)
+      setErrors((prev) => ({ ...prev, [key]: err }))
+    }
   }
 
 
@@ -276,6 +315,32 @@ export default function Checkout() {
       return
     }
 
+    const nextErrors = {
+      name: validateField('name', form.name),
+      phone: validateField('phone', form.phone),
+      email: validateField('email', form.email),
+      address: validateField('address', form.address),
+      city: validateField('city', form.city),
+      state: validateField('state', form.state),
+      pincode: validateField('pincode', form.pincode),
+    }
+
+    setErrors(nextErrors)
+    setTouched({
+      name: true,
+      phone: true,
+      email: true,
+      address: true,
+      city: true,
+      state: true,
+      pincode: true,
+    })
+
+    if (Object.values(nextErrors).some(Boolean)) {
+      toast.error('Please correct the highlighted errors in your delivery details')
+      return
+    }
+
     setBusy(true)
 
     try {
@@ -397,14 +462,18 @@ export default function Checkout() {
 
                   <input
                     required
+                    maxLength={NAME_MAX_LENGTH}
                     value={form.name}
+                    onBlur={() => handleBlur('name')}
                     onChange={(event) =>
                       field(
                         'name',
                         event.target.value,
                       )
                     }
+                    placeholder="Receiver's full name"
                   />
+                  {touched.name && errors.name && <small className="field-error">{errors.name}</small>}
                 </label>
 
 
@@ -412,15 +481,20 @@ export default function Checkout() {
                   Phone
 
                   <input
+                    type="tel"
                     required
+                    maxLength={PHONE_MAX_LENGTH}
                     value={form.phone}
+                    onBlur={() => handleBlur('phone')}
                     onChange={(event) =>
                       field(
                         'phone',
                         event.target.value,
                       )
                     }
+                    placeholder="10-digit mobile"
                   />
+                  {touched.phone && errors.phone && <small className="field-error">{errors.phone}</small>}
                 </label>
 
               </div>
@@ -432,14 +506,18 @@ export default function Checkout() {
                 <input
                   type="email"
                   required
+                  maxLength={EMAIL_MAX_LENGTH}
                   value={form.email}
+                  onBlur={() => handleBlur('email')}
                   onChange={(event) =>
                     field(
                       'email',
                       event.target.value,
                     )
                   }
+                  placeholder="Order updates email"
                 />
+                {touched.email && errors.email && <small className="field-error">{errors.email}</small>}
               </label>
 
 
@@ -448,14 +526,18 @@ export default function Checkout() {
 
                 <textarea
                   required
+                  maxLength={ADDRESS_MAX_LENGTH}
                   value={form.address}
+                  onBlur={() => handleBlur('address')}
                   onChange={(event) =>
                     field(
                       'address',
                       event.target.value,
                     )
                   }
+                  placeholder="House/Flat, Street, Landmark"
                 />
+                {touched.address && errors.address && <small className="field-error">{errors.address}</small>}
               </label>
 
 
@@ -466,14 +548,18 @@ export default function Checkout() {
 
                   <input
                     required
+                    maxLength={100}
                     value={form.city}
+                    onBlur={() => handleBlur('city')}
                     onChange={(event) =>
                       field(
                         'city',
                         event.target.value,
                       )
                     }
+                    placeholder="City"
                   />
+                  {touched.city && errors.city && <small className="field-error">{errors.city}</small>}
                 </label>
 
 
@@ -482,14 +568,18 @@ export default function Checkout() {
 
                   <input
                     required
+                    maxLength={100}
                     value={form.state}
+                    onBlur={() => handleBlur('state')}
                     onChange={(event) =>
                       field(
                         'state',
                         event.target.value,
                       )
                     }
+                    placeholder="State"
                   />
+                  {touched.state && errors.state && <small className="field-error">{errors.state}</small>}
                 </label>
 
 
@@ -498,14 +588,18 @@ export default function Checkout() {
 
                   <input
                     required
+                    maxLength={6}
                     value={form.pincode}
+                    onBlur={() => handleBlur('pincode')}
                     onChange={(event) =>
                       field(
                         'pincode',
                         event.target.value,
                       )
                     }
+                    placeholder="6-digit PIN"
                   />
+                  {touched.pincode && errors.pincode && <small className="field-error">{errors.pincode}</small>}
                 </label>
 
               </div>

@@ -1,7 +1,14 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+from app.core.validators import (
+    validate_and_normalize_email,
+    validate_and_normalize_phone,
+    validate_clean_text,
+    validate_pincode,
+)
 
 
 class OrderItemCreate(BaseModel):
@@ -11,6 +18,20 @@ class OrderItemCreate(BaseModel):
     custom_text: str | None = Field(default=None, max_length=1000)
     event_date: date | None = None
     custom_image_url: str | None = Field(default=None, max_length=500)
+
+    @field_validator("occasion")
+    @classmethod
+    def sanitize_occasion(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        return validate_clean_text(value, "Occasion", min_length=1, max_length=80, allow_newlines=False)
+
+    @field_validator("custom_text")
+    @classmethod
+    def sanitize_custom_text(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        return validate_clean_text(value, "Custom message", min_length=1, max_length=1000, allow_newlines=True)
 
 
 class OrderCreate(BaseModel):
@@ -23,6 +44,44 @@ class OrderCreate(BaseModel):
     pincode: str = Field(min_length=4, max_length=20)
     payment_method: str = Field(pattern="^(cod|razorpay)$")
     items: list[OrderItemCreate] = Field(min_length=1, max_length=20)
+
+    @field_validator("name")
+    @classmethod
+    def sanitize_name(cls, value: str) -> str:
+        return validate_clean_text(value, "Customer name", min_length=2, max_length=150, allow_newlines=False)
+
+    @field_validator("phone")
+    @classmethod
+    def sanitize_phone(cls, value: str) -> str:
+        res = validate_and_normalize_phone(value)
+        if not res:
+            raise ValueError("Phone number is required")
+        return res
+
+    @field_validator("email")
+    @classmethod
+    def sanitize_email(cls, value: str) -> str:
+        return validate_and_normalize_email(value)
+
+    @field_validator("address")
+    @classmethod
+    def sanitize_address(cls, value: str) -> str:
+        return validate_clean_text(value, "Address", min_length=5, max_length=800, allow_newlines=True)
+
+    @field_validator("city")
+    @classmethod
+    def sanitize_city(cls, value: str) -> str:
+        return validate_clean_text(value, "City", min_length=2, max_length=100, allow_newlines=False)
+
+    @field_validator("state")
+    @classmethod
+    def sanitize_state(cls, value: str) -> str:
+        return validate_clean_text(value, "State", min_length=2, max_length=100, allow_newlines=False)
+
+    @field_validator("pincode")
+    @classmethod
+    def sanitize_pincode(cls, value: str) -> str:
+        return validate_pincode(value)
 
 
 class OrderItemPublic(BaseModel):

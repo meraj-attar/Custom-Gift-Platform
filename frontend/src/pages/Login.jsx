@@ -15,7 +15,7 @@ import {
 
 import { useAuth } from '../context/AuthContext'
 import { getErrorMessage } from '../services/api'
-
+import { EMAIL_MAX_LENGTH, validateEmail } from '../utils/validators'
 
 export default function Login() {
   const { user, login } = useAuth()
@@ -26,24 +26,47 @@ export default function Login() {
     email: '',
     password: '',
   })
-
+  const [emailError, setEmailError] = useState(null)
+  const [touched, setTouched] = useState(false)
   const [busy, setBusy] = useState(false)
 
   if (user) {
     return (
       <Navigate
-        to={
-          user.role === 'admin'
-            ? '/admin'
-            : '/'
-        }
+        to={user.role === 'admin' ? '/admin' : '/'}
         replace
       />
     )
   }
 
+  const handleBlurEmail = () => {
+    setTouched(true)
+    setEmailError(validateEmail(form.email))
+  }
+
+  const handleEmailChange = (val) => {
+    setForm((prev) => ({ ...prev, email: val }))
+    if (touched) {
+      setEmailError(validateEmail(val))
+    }
+  }
+
   const submit = async (event) => {
     event.preventDefault()
+
+    const err = validateEmail(form.email)
+    setEmailError(err)
+    setTouched(true)
+    if (err) {
+      toast.error(err)
+      return
+    }
+
+    if (!form.password) {
+      toast.error('Password is required')
+      return
+    }
+
     setBusy(true)
 
     try {
@@ -52,24 +75,13 @@ export default function Login() {
         password: form.password,
       })
 
-      toast.success(
-        `Welcome back, ${
-          current.name.split(' ')[0]
-        }!`,
-      )
+      toast.success(`Welcome back, ${current.name.split(' ')[0]}!`)
 
       navigate(
-        location.state?.from ||
-          (
-            current.role === 'admin'
-              ? '/admin'
-              : '/'
-          ),
+        location.state?.from || (current.role === 'admin' ? '/admin' : '/'),
       )
     } catch (error) {
-      toast.error(
-        getErrorMessage(error)
-      )
+      toast.error(getErrorMessage(error))
     } finally {
       setBusy(false)
     }
@@ -89,36 +101,20 @@ export default function Login() {
           </span>
 
           <h2>
-            Create gifts that feel like they
-            were made for one person —
-            because they were.
+            Create gifts that feel like they were made for one person — because they were.
           </h2>
 
           <p>
-            Personalize photos, messages and
-            dates. Track every order from
-            creation to delivery.
+            Personalize photos, messages and dates. Track every order from creation to delivery.
           </p>
         </div>
       </div>
 
       <div className="auth-form-wrap">
-        <form
-          className="auth-card"
-          onSubmit={submit}
-        >
-          <span className="eyebrow">
-            Welcome back
-          </span>
-
-          <h1>
-            Sign in to CustomGift
-          </h1>
-
-          <p>
-            Access your gift bag, orders and
-            saved personalization.
-          </p>
+        <form className="auth-card" onSubmit={submit} noValidate>
+          <span className="eyebrow">Welcome back</span>
+          <h1>Sign in to CustomGift</h1>
+          <p>Access your gift bag, orders and saved personalization.</p>
 
           <label>
             <span>
@@ -129,17 +125,14 @@ export default function Login() {
             <input
               type="email"
               required
+              maxLength={EMAIL_MAX_LENGTH}
               autoComplete="email"
               value={form.email}
-              onChange={(event) =>
-                setForm({
-                  ...form,
-                  email:
-                    event.target.value,
-                })
-              }
+              onBlur={handleBlurEmail}
+              onChange={(e) => handleEmailChange(e.target.value)}
               placeholder="you@example.com"
             />
+            {touched && emailError && <small className="field-error">{emailError}</small>}
           </label>
 
           <label>
@@ -151,52 +144,30 @@ export default function Login() {
             <input
               type="password"
               required
+              maxLength={128}
               autoComplete="current-password"
               value={form.password}
-              onChange={(event) =>
-                setForm({
-                  ...form,
-                  password:
-                    event.target.value,
-                })
-              }
+              onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
               placeholder="••••••••"
             />
           </label>
 
           <div className="form-between">
             <span />
-
-            <Link to="/forgot-password">
-              Forgot password?
-            </Link>
+            <Link to="/forgot-password">Forgot password?</Link>
           </div>
 
-          <button
-            className="button button-lg full"
-            disabled={busy}
-          >
-            {busy
-              ? 'Signing in...'
-              : 'Sign in'}
+          <button className="button button-lg full" disabled={busy}>
+            {busy ? 'Signing in...' : 'Sign in'}
           </button>
 
           <p className="auth-switch">
-            New here?{' '}
-            <Link to="/register">
-              Create an account
-            </Link>
+            New here? <Link to="/register">Create an account</Link>
           </p>
 
           <div className="demo-note">
-            <strong>
-              Demo admin
-            </strong>
-
-            <span>
-              admin@customgift.dev /
-              Admin@123
-            </span>
+            <strong>Demo admin</strong>
+            <span>admin@customgift.dev / Admin@123</span>
           </div>
         </form>
       </div>

@@ -6,26 +6,12 @@ from pydantic import (
     model_validator,
 )
 
-
-def validate_password_strength(
-    value: str,
-) -> str:
-    if not any(c.isupper() for c in value):
-        raise ValueError(
-            "Password must include an uppercase letter"
-        )
-
-    if not any(c.islower() for c in value):
-        raise ValueError(
-            "Password must include a lowercase letter"
-        )
-
-    if not any(c.isdigit() for c in value):
-        raise ValueError(
-            "Password must include a number"
-        )
-
-    return value
+from app.core.validators import (
+    validate_and_normalize_email,
+    validate_and_normalize_phone,
+    validate_clean_text,
+    validate_password_strength,
+)
 
 
 class UserRegister(BaseModel):
@@ -51,18 +37,42 @@ class UserRegister(BaseModel):
         max_length=500,
     )
 
+    @field_validator("name")
+    @classmethod
+    def sanitize_name(cls, value: str) -> str:
+        return validate_clean_text(value, "Full name", min_length=2, max_length=100, allow_newlines=False)
+
+    @field_validator("email")
+    @classmethod
+    def sanitize_email(cls, value: str) -> str:
+        return validate_and_normalize_email(value)
+
+    @field_validator("phone")
+    @classmethod
+    def sanitize_phone(cls, value: str | None) -> str | None:
+        return validate_and_normalize_phone(value)
+
+    @field_validator("address")
+    @classmethod
+    def sanitize_address(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        return validate_clean_text(value, "Address", min_length=2, max_length=500, allow_newlines=True)
+
     @field_validator("password")
     @classmethod
-    def password_strength(
-        cls,
-        value: str,
-    ) -> str:
+    def password_strength(cls, value: str) -> str:
         return validate_password_strength(value)
 
 
 class UserLogin(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=1, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def sanitize_email(cls, value: str) -> str:
+        return validate_and_normalize_email(value)
 
 
 class UserPublic(BaseModel):
@@ -88,6 +98,11 @@ class TokenResponse(BaseModel):
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
+    @field_validator("email")
+    @classmethod
+    def sanitize_email(cls, value: str) -> str:
+        return validate_and_normalize_email(value)
+
 
 class ForgotPasswordResponse(BaseModel):
     message: str
@@ -95,9 +110,7 @@ class ForgotPasswordResponse(BaseModel):
 
 
 class ResetPasswordRequest(BaseModel):
-    token: str = Field(
-        min_length=1
-    )
+    token: str = Field(min_length=1)
 
     new_password: str = Field(
         min_length=8,
@@ -111,20 +124,11 @@ class ResetPasswordRequest(BaseModel):
 
     @field_validator("new_password")
     @classmethod
-    def password_strength(
-        cls,
-        value: str,
-    ) -> str:
+    def password_strength(cls, value: str) -> str:
         return validate_password_strength(value)
 
     @model_validator(mode="after")
     def passwords_match(self):
-        if (
-            self.new_password
-            != self.confirm_password
-        ):
-            raise ValueError(
-                "Passwords do not match"
-            )
-
+        if self.new_password != self.confirm_password:
+            raise ValueError("Passwords do not match")
         return self

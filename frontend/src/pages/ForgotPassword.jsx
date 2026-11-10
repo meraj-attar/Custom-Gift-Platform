@@ -3,7 +3,6 @@ import {
   Mail,
   ShieldCheck,
 } from 'lucide-react'
-
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { Link } from 'react-router-dom'
@@ -11,16 +10,38 @@ import { Link } from 'react-router-dom'
 import api, {
   getErrorMessage,
 } from '../services/api'
-
+import { EMAIL_MAX_LENGTH, validateEmail } from '../utils/validators'
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
+  const [emailError, setEmailError] = useState(null)
+  const [touched, setTouched] = useState(false)
   const [resetUrl, setResetUrl] = useState('')
   const [sent, setSent] = useState(false)
   const [busy, setBusy] = useState(false)
 
+  const handleBlurEmail = () => {
+    setTouched(true)
+    setEmailError(validateEmail(email))
+  }
+
+  const handleEmailChange = (val) => {
+    setEmail(val)
+    if (touched) {
+      setEmailError(validateEmail(val))
+    }
+  }
+
   const submit = async (event) => {
     event.preventDefault()
+
+    const err = validateEmail(email)
+    setEmailError(err)
+    setTouched(true)
+    if (err) {
+      toast.error(err)
+      return
+    }
 
     setBusy(true)
     setSent(false)
@@ -37,13 +58,9 @@ export default function ForgotPassword() {
       setSent(true)
       setResetUrl(data.reset_url || '')
 
-      toast.success(
-        'Reset request received'
-      )
+      toast.success('Reset request received')
     } catch (error) {
-      toast.error(
-        getErrorMessage(error)
-      )
+      toast.error(getErrorMessage(error))
     } finally {
       setBusy(false)
     }
@@ -54,6 +71,7 @@ export default function ForgotPassword() {
       <form
         className="auth-card narrow"
         onSubmit={submit}
+        noValidate
       >
         <span className="icon-bubble">
           <ShieldCheck />
@@ -68,10 +86,8 @@ export default function ForgotPassword() {
         </h1>
 
         <p>
-          Enter the email address connected
-          to your CustomGift account. If an
-          active account is registered with
-          that email, reset instructions will
+          Enter the email address connected to your CustomGift account. If an
+          active account is registered with that email, reset instructions will
           be sent to that address.
         </p>
 
@@ -84,13 +100,14 @@ export default function ForgotPassword() {
           <input
             type="email"
             required
+            maxLength={EMAIL_MAX_LENGTH}
             autoComplete="email"
             value={email}
-            onChange={(event) =>
-              setEmail(event.target.value)
-            }
+            onBlur={handleBlurEmail}
+            onChange={(event) => handleEmailChange(event.target.value)}
             placeholder="you@example.com"
           />
+          {touched && emailError && <small className="field-error">{emailError}</small>}
         </label>
 
         <button
@@ -98,39 +115,29 @@ export default function ForgotPassword() {
           className="button button-lg full"
           disabled={busy}
         >
-          {busy
-            ? 'Sending instructions...'
-            : 'Send reset instructions'}
+          {busy ? 'Sending link...' : 'Send reset instructions'}
         </button>
 
         {sent && (
-          <div className="success-box">
-            <strong>
-              Reset request received.
-            </strong>
-
-            <span>
-              If an active CustomGift account
-              is registered with this email,
-              password reset instructions will
-              be sent to that address.
-            </span>
-
+          <div className="reset-confirmation">
+            <p>
+              If an account is associated with this email, we have sent a reset link.
+              Please check your inbox.
+            </p>
             {resetUrl && (
-              <a href={resetUrl}>
-                Open development reset link →
-              </a>
+              <div className="dev-reset-link">
+                <small>Development shortcut:</small>
+                <a href={resetUrl}>Open reset link</a>
+              </div>
             )}
           </div>
         )}
 
-        <Link
-          className="text-link center"
-          to="/login"
-        >
-          <ArrowLeft size={15} />
-          Back to sign in
-        </Link>
+        <p className="auth-switch">
+          <Link to="/login">
+            <ArrowLeft size={16} /> Back to sign in
+          </Link>
+        </p>
       </form>
     </div>
   )
