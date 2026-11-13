@@ -16,6 +16,10 @@ RATE_LIMIT_RULES: list[tuple[str, int, int]] = [
     ("/api/auth/login", 15, 60),          # 15 attempts per minute
     ("/api/auth/register", 10, 60),       # 10 attempts per minute
     ("/api/auth/forgot-password", 5, 60), # 5 attempts per minute
+    ("/api/auth/verify-reset-otp", 10, 60), # 10 verification attempts per minute
+    ("/api/auth/resend-reset-otp", 5, 60), # 5 resend attempts per minute
+    ("/api/auth/reset-password", 5, 60),  # 5 reset attempts per minute
+    ("/api/auth/recovery", 5, 60),        # 5 recovery attempts per minute
     ("/api/contact", 10, 60),             # 10 contact messages per minute
 ]
 

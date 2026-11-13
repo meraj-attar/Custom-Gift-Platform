@@ -11,3 +11,31 @@ frontend/dist/
 .DS_Store
 .idea/
 .vscode/
+
+# Environment files
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+
+# Python
+venv/
+backend/.venv/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Frontend
+node_modules/
+dist/
+build/
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

@@ -39,9 +39,14 @@ class OrderCreate(BaseModel):
     phone: str = Field(min_length=7, max_length=30)
     email: EmailStr
     address: str = Field(min_length=5, max_length=800)
+    address_line2: str | None = Field(default=None, max_length=255)
+    landmark: str | None = Field(default=None, max_length=150)
     city: str = Field(min_length=2, max_length=100)
     state: str = Field(min_length=2, max_length=100)
     pincode: str = Field(min_length=4, max_length=20)
+    delivery_option: str = Field(default="standard", pattern="^(standard|express)$")
+    saved_address_id: int | None = None
+    save_address_to_profile: bool = False
     payment_method: str = Field(pattern="^(cod|razorpay)$")
     items: list[OrderItemCreate] = Field(min_length=1, max_length=20)
 
@@ -67,6 +72,20 @@ class OrderCreate(BaseModel):
     @classmethod
     def sanitize_address(cls, value: str) -> str:
         return validate_clean_text(value, "Address", min_length=5, max_length=800, allow_newlines=True)
+
+    @field_validator("address_line2")
+    @classmethod
+    def sanitize_address_line2(cls, value: str | None) -> str | None:
+        if value is None or not str(value).strip():
+            return None
+        return validate_clean_text(value, "Address line 2", min_length=1, max_length=255, allow_newlines=False)
+
+    @field_validator("landmark")
+    @classmethod
+    def sanitize_landmark(cls, value: str | None) -> str | None:
+        if value is None or not str(value).strip():
+            return None
+        return validate_clean_text(value, "Landmark", min_length=1, max_length=150, allow_newlines=False)
 
     @field_validator("city")
     @classmethod
@@ -107,9 +126,15 @@ class OrderPublic(BaseModel):
     phone: str
     email: EmailStr
     address: str
+    address_line2: str | None = None
+    landmark: str | None = None
     city: str
     state: str
     pincode: str
+    delivery_option: str = "standard"
+    shipping_fee: Decimal = Decimal("0.00")
+    subtotal: Decimal | None = None
+    estimated_delivery: str | None = None
     total_amount: Decimal
     payment_method: str
     payment_status: str

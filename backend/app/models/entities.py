@@ -23,8 +23,16 @@ class User(Base):
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, nullable=False, default=utcnow)
 
+    recovery_code_hash = Column(String(128), nullable=True)
+    recovery_code_created_at = Column(DateTime, nullable=True)
+    recovery_code_used = Column(Boolean, nullable=False, default=False)
+    reset_token_hash = Column(String(128), nullable=True, index=True)
+    reset_token_expires_at = Column(DateTime, nullable=True)
+    token_version = Column(Integer, nullable=False, default=1)
+
     orders = relationship("Order", back_populates="user", cascade="all, delete-orphan")
     wishlist_items = relationship("WishlistItem", back_populates="user", cascade="all, delete-orphan")
+    addresses = relationship("Address", back_populates="user", cascade="all, delete-orphan")
 
 
 class Product(Base):
@@ -69,6 +77,29 @@ class WishlistItem(Base):
     product = relationship("Product", back_populates="wishlist_items")
 
 
+class Address(Base):
+    __tablename__ = "addresses"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    full_name = Column(String(100), nullable=False)
+    phone = Column(String(20), nullable=False)
+    email = Column(String(255), nullable=True)
+    address_line1 = Column(String(255), nullable=False)
+    address_line2 = Column(String(255), nullable=True)
+    landmark = Column(String(150), nullable=True)
+    city = Column(String(100), nullable=False)
+    state = Column(String(100), nullable=False)
+    pincode = Column(String(10), nullable=False)
+    is_default = Column(Boolean, nullable=False, default=False, index=True)
+
+    created_at = Column(DateTime, nullable=False, default=utcnow, index=True)
+    updated_at = Column(DateTime, nullable=False, default=utcnow, onupdate=utcnow)
+
+    user = relationship("User", back_populates="addresses")
+
+
 class Order(Base):
     __tablename__ = "orders"
 
@@ -80,9 +111,16 @@ class Order(Base):
     phone = Column(String(30), nullable=False)
     email = Column(String(255), nullable=False)
     address = Column(Text, nullable=False)
+    address_line2 = Column(String(255), nullable=True)
+    landmark = Column(String(150), nullable=True)
     city = Column(String(100), nullable=False)
     state = Column(String(100), nullable=False)
     pincode = Column(String(20), nullable=False)
+
+    delivery_option = Column(String(30), nullable=False, default="standard")
+    shipping_fee = Column(Numeric(10, 2), nullable=False, default=0.00)
+    subtotal = Column(Numeric(10, 2), nullable=True)
+    estimated_delivery = Column(String(80), nullable=True)
 
     total_amount = Column(Numeric(10, 2), nullable=False)
     payment_method = Column(String(20), nullable=False)
@@ -126,5 +164,59 @@ class ContactMessage(Base):
     email = Column(String(255), nullable=False)
     subject = Column(String(180), nullable=False)
     message = Column(Text, nullable=False)
-    created_at = Column(DateTime, nullable=False, default=utcnow)
+    status = Column(String(30), nullable=False, default="New", index=True)
+    created_at = Column(DateTime, nullable=False, default=utcnow, index=True)
     is_read = Column(Boolean, nullable=False, default=False)
+
+
+class PasswordResetOTP(Base):
+    __tablename__ = "password_reset_otps"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    otp_hash = Column(String(128), nullable=False)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    attempts = Column(Integer, nullable=False, default=0)
+    is_used = Column(Boolean, nullable=False, default=False, index=True)
+    created_at = Column(DateTime, nullable=False, default=utcnow, index=True)
+
+    user = relationship("User", backref="reset_otps")
+
+
+class Payment(Base):
+    __tablename__ = "payments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    razorpay_order_id = Column(String(120), nullable=True, index=True)
+    razorpay_payment_id = Column(String(120), nullable=True, index=True)
+    razorpay_signature = Column(String(255), nullable=True)
+
+    amount = Column(Numeric(10, 2), nullable=False)
+    currency = Column(String(10), nullable=False, default="INR")
+    status = Column(String(30), nullable=False, default="CREATED", index=True)  # CREATED, PENDING, SUCCESS, FAILED, CANCELLED
+    payment_method = Column(String(50), nullable=True)  # e.g. "razorpay", "upi", "card", "netbanking"
+
+    error_code = Column(String(100), nullable=True)
+    error_description = Column(Text, nullable=True)
+
+    created_at = Column(DateTime, nullable=False, default=utcnow, index=True)
+    updated_at = Column(DateTime, nullable=False, default=utcnow, onupdate=utcnow)
+
+    user = relationship("User", backref="payments")
+    order = relationship("Order", backref="payments")
+
+
+class StoreSetting(Base):
+    __tablename__ = "store_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String(100), unique=True, index=True, nullable=False)
+    value = Column(Text, nullable=False)
+    description = Column(String(255), nullable=True)
+    updated_at = Column(DateTime, nullable=False, default=utcnow, onupdate=utcnow)
+
+
+

@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ProductBase(BaseModel):
@@ -20,6 +20,14 @@ class ProductBase(BaseModel):
     needs_date: bool = False
     max_text_length: int = Field(default=120, ge=1, le=1000)
     is_featured: bool = False
+
+    @field_validator("category")
+    @classmethod
+    def clean_category(cls, v: str) -> str:
+        cleaned = v.strip()
+        if len(cleaned) < 2:
+            raise ValueError("Category must have at least 2 non-whitespace characters")
+        return cleaned
 
 
 class ProductCreate(ProductBase):
@@ -44,6 +52,16 @@ class ProductUpdate(BaseModel):
     max_text_length: int | None = Field(default=None, ge=1, le=1000)
     is_featured: bool | None = None
     is_active: bool | None = None
+
+    @field_validator("category")
+    @classmethod
+    def clean_update_category(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        cleaned = v.strip()
+        if len(cleaned) < 2:
+            raise ValueError("Category must have at least 2 non-whitespace characters")
+        return cleaned
 
 
 class ProductPublic(ProductBase):

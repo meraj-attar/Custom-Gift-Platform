@@ -102,6 +102,98 @@ def test_category_filter(client, db):
     assert res.json()["total"] == 4
 
 
+def test_canonical_category_mapping_and_aliases(client, db):
+    """Verify canonical category mapping, case insensitivity, and aliases (Change 5)."""
+    p1 = Product(
+        title="Personalized Coffee Mug",
+        slug="personalized-coffee-mug",
+        category="Customize Mugs",
+        price=Decimal("499.00"),
+        description="Ceramic photo mug",
+        rating=4.8,
+        stock=10,
+        is_active=True,
+    )
+    p2 = Product(
+        title="Custom Photo Frame",
+        slug="custom-photo-frame-unique",
+        category="Photo Frames",
+        price=Decimal("899.00"),
+        description="Wooden picture frame",
+        rating=4.9,
+        stock=8,
+        is_active=True,
+    )
+    db.add_all([p1, p2])
+    db.commit()
+
+    # Querying canonical "Mugs" matches "Customize Mugs"
+    res = client.get("/api/products?category=Mugs")
+    assert res.status_code == 200
+    assert any(item["title"] == "Personalized Coffee Mug" for item in res.json()["items"])
+
+    # Querying lowercase "mugs" matches
+    res_lower = client.get("/api/products?category=mugs")
+    assert res_lower.status_code == 200
+    assert any(item["title"] == "Personalized Coffee Mug" for item in res_lower.json()["items"])
+
+    # Querying canonical "Frames" matches "Photo Frames"
+    res_frames = client.get("/api/products?category=Frames")
+    assert res_frames.status_code == 200
+    assert any(item["title"] == "Custom Photo Frame" for item in res_frames.json()["items"])
+
+    # Whitespace in category query parameter is handled safely
+    res_ws = client.get("/api/products?category=%20Mugs%20")
+    assert res_ws.status_code == 200
+    assert any(item["title"] == "Personalized Coffee Mug" for item in res_ws.json()["items"])
+
+    # Unknown category returns 0 products safely without 500 error
+    res_unknown = client.get("/api/products?category=NonExistent999")
+    assert res_unknown.status_code == 200
+    assert res_unknown.json()["total"] == 0
+
+
+def test_categories_endpoint_deduplication(client, db):
+    """Verify /api/products/categories returns deduplicated, canonical, sorted categories."""
+    p1 = Product(
+        title="Mug A",
+        slug="mug-a",
+        category=" Customize Mugs ",  # un-trimmed
+        price=Decimal("499.00"),
+        description="Ceramic mug A",
+        stock=10,
+        is_active=True,
+    )
+    p2 = Product(
+        title="Mug B",
+        slug="mug-b",
+        category="Customize Mugs",  # alias
+        price=Decimal("549.00"),
+        description="Ceramic mug B",
+        stock=10,
+        is_active=True,
+    )
+    p3 = Product(
+        title="Mug C",
+        slug="mug-c",
+        category="Mugs",  # canonical
+        price=Decimal("599.00"),
+        description="Ceramic mug C",
+        stock=10,
+        is_active=True,
+    )
+    db.add_all([p1, p2, p3])
+    db.commit()
+
+    res = client.get("/api/products/categories")
+    assert res.status_code == 200
+    cats = res.json()
+    # "Mugs" must appear exactly once despite different dirty representations
+    assert cats.count("Mugs") == 1
+    # No duplicate categories allowed
+    assert len(cats) == len(set(cats))
+
+
 def test_price_range_filtering(client, db):
     seed_test_products(db)
 

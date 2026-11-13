@@ -2,6 +2,7 @@ import base64
 import hashlib
 import hmac
 import os
+import secrets
 
 from datetime import (
     datetime,
@@ -188,3 +189,72 @@ def decode_token(
         )
 
     return payload
+
+
+RECOVERY_CHARS = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+
+
+def generate_recovery_code() -> str:
+    """
+    Generates a cryptographically secure 16-character recovery code formatted as CG-XXXX-XXXX-XXXX-XXXX.
+    Uses unambiguous characters (no 0/O/1/I).
+    """
+    chars = "".join(secrets.choice(RECOVERY_CHARS) for _ in range(16))
+    return f"CG-{chars[0:4]}-{chars[4:8]}-{chars[8:12]}-{chars[12:16]}"
+
+
+def normalize_recovery_code(code: str) -> str:
+    """
+    Normalizes recovery code by stripping whitespace, hyphens, and converting to uppercase.
+    Automatically prepends 'CG' if omitted by user.
+    """
+    cleaned = code.strip().upper().replace(" ", "").replace("-", "")
+    if not cleaned.startswith("CG") and len(cleaned) == 16:
+        cleaned = "CG" + cleaned
+    return cleaned
+
+
+def hash_recovery_code(code: str) -> str:
+    """
+    Returns SHA-256 hash of normalized recovery code.
+    Plaintext recovery codes are never stored in the database.
+    """
+    normalized = normalize_recovery_code(code)
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def generate_reset_token() -> str:
+    """
+    Generates a single-use cryptographically secure reset token.
+    """
+    return secrets.token_urlsafe(32)
+
+
+def hash_reset_token(token: str) -> str:
+    """
+    Returns SHA-256 hash of reset token.
+    """
+    return hashlib.sha256(token.strip().encode("utf-8")).hexdigest()
+
+
+def generate_otp(length: int = 6) -> str:
+    """
+    Generates a cryptographically secure numeric OTP (default 6 digits).
+    """
+    return f"{secrets.randbelow(10**length):0{length}d}"
+
+
+def hash_otp(otp: str) -> str:
+    """
+    Returns SHA-256 hash of OTP.
+    Plaintext OTPs are never stored in the database.
+    """
+    return hashlib.sha256(otp.strip().encode("utf-8")).hexdigest()
+
+
+def verify_otp(otp: str, hashed_otp: str) -> bool:
+    """
+    Constant-time comparison between entered OTP and stored hash.
+    """
+    return hmac.compare_digest(hash_otp(otp), hashed_otp)
+

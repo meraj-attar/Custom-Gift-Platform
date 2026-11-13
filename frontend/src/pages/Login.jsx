@@ -1,7 +1,11 @@
 import {
+  Eye,
+  EyeOff,
   Gift,
+  Heart,
   LockKeyhole,
   Mail,
+  ShieldCheck,
   Sparkles,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -14,20 +18,35 @@ import {
 } from 'react-router-dom'
 
 import { useAuth } from '../context/AuthContext'
+import { useCart } from '../context/CartContext'
 import { getErrorMessage } from '../services/api'
-import { EMAIL_MAX_LENGTH, validateEmail } from '../utils/validators'
+import {
+  EMAIL_MAX_LENGTH,
+  PASSWORD_MAX_LENGTH,
+  validateEmail,
+  validateLoginPassword,
+} from '../utils/validators'
 
 export default function Login() {
   const { user, login } = useAuth()
+  const { addItem } = useCart()
   const navigate = useNavigate()
   const location = useLocation()
 
+  // Form fields strictly empty by default (no prefilled or dummy credentials)
   const [form, setForm] = useState({
     email: '',
     password: '',
   })
-  const [emailError, setEmailError] = useState(null)
-  const [touched, setTouched] = useState(false)
+  const [errors, setErrors] = useState({
+    email: null,
+    password: null,
+  })
+  const [touched, setTouched] = useState({
+    email: false,
+    password: false,
+  })
+  const [showPassword, setShowPassword] = useState(false)
   const [busy, setBusy] = useState(false)
 
   if (user) {
@@ -39,31 +58,48 @@ export default function Login() {
     )
   }
 
-  const handleBlurEmail = () => {
-    setTouched(true)
-    setEmailError(validateEmail(form.email))
+  const validateField = (field, value) => {
+    if (field === 'email') return validateEmail(value)
+    if (field === 'password') return validateLoginPassword(value)
+    return null
   }
 
-  const handleEmailChange = (val) => {
-    setForm((prev) => ({ ...prev, email: val }))
-    if (touched) {
-      setEmailError(validateEmail(val))
+  const handleBlur = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }))
+    const error = validateField(field, form[field])
+    setErrors((prev) => ({ ...prev, [field]: error }))
+  }
+
+  const handleChange = (field, value) => {
+    setForm((prev) => ({ ...prev, [field]: value }))
+    if (touched[field]) {
+      const error = validateField(field, value)
+      setErrors((prev) => ({ ...prev, [field]: error }))
     }
   }
 
   const submit = async (event) => {
     event.preventDefault()
+    if (busy) return
 
-    const err = validateEmail(form.email)
-    setEmailError(err)
-    setTouched(true)
-    if (err) {
-      toast.error(err)
-      return
-    }
+    const emailErr = validateEmail(form.email)
+    const passwordErr = validateLoginPassword(form.password)
 
-    if (!form.password) {
-      toast.error('Password is required')
+    setErrors({
+      email: emailErr,
+      password: passwordErr,
+    })
+    setTouched({
+      email: true,
+      password: true,
+    })
+
+    if (emailErr || passwordErr) {
+      if (emailErr) {
+        toast.error(emailErr)
+      } else if (passwordErr) {
+        toast.error(passwordErr)
+      }
       return
     }
 
@@ -75,11 +111,16 @@ export default function Login() {
         password: form.password,
       })
 
-      toast.success(`Welcome back, ${current.name.split(' ')[0]}!`)
+      const firstName = current?.name ? current.name.split(' ')[0] : 'there'
+      toast.success(`Welcome back, ${firstName}!`)
 
-      navigate(
-        location.state?.from || (current.role === 'admin' ? '/admin' : '/'),
-      )
+      const orderNowItem = location.state?.orderNowItem
+      if (orderNowItem) {
+        addItem(orderNowItem)
+      }
+
+      const redirectTarget = location.state?.from || (current.role === 'admin' ? '/admin' : '/')
+      navigate(redirectTarget, { replace: true })
     } catch (error) {
       toast.error(getErrorMessage(error))
     } finally {
@@ -90,85 +131,134 @@ export default function Login() {
   return (
     <div className="auth-page">
       <div className="auth-visual">
-        <div>
-          <span className="brand-mark large">
-            <Gift />
-          </span>
+        <div className="auth-visual-inner">
+          <div className="auth-brand-badge">
+            <span className="brand-mark large">
+              <Gift size={24} />
+            </span>
+            <span className="auth-brand-title">CustomGift</span>
+          </div>
 
-          <span className="eyebrow light">
-            <Sparkles />
-            Meaningful gifting starts here
-          </span>
+          <div className="auth-visual-content">
+            <span className="eyebrow light">
+              <Sparkles size={14} /> Meaningful gifting starts here
+            </span>
 
-          <h2>
-            Create gifts that feel like they were made for one person — because they were.
-          </h2>
+            <h2>
+              Create gifts that feel like they were made for one person — because they were.
+            </h2>
 
-          <p>
-            Personalize photos, messages and dates. Track every order from creation to delivery.
-          </p>
+            <p>
+              Personalize photos, messages and dates. Track every order from creation to delivery.
+            </p>
+
+            <div className="auth-trust-pills">
+              <span><Sparkles size={13} /> Real-Time Live Preview</span>
+              <span><Heart size={13} /> Handcrafted Keepsakes</span>
+              <span><ShieldCheck size={13} /> Secure Checkout</span>
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="auth-form-wrap">
-        <form className="auth-card" onSubmit={submit} noValidate>
+        <form
+          className="auth-card"
+          onSubmit={submit}
+          noValidate
+          aria-label="Sign in to CustomGift"
+        >
           <span className="eyebrow">Welcome back</span>
           <h1>Sign in to CustomGift</h1>
-          <p>Access your gift bag, orders and saved personalization.</p>
+          <p className="auth-subtitle">Access your gift bag, orders and saved personalization.</p>
 
-          <label>
-            <span>
-              <Mail size={16} />
-              Email address
+          <label htmlFor="login-email">
+            <span className="field-label-text">
+              <Mail size={16} /> Email address
             </span>
 
             <input
+              id="login-email"
+              name="email"
               type="email"
               required
               maxLength={EMAIL_MAX_LENGTH}
               autoComplete="email"
               value={form.email}
-              onBlur={handleBlurEmail}
-              onChange={(e) => handleEmailChange(e.target.value)}
+              aria-invalid={Boolean(touched.email && errors.email)}
+              aria-describedby={touched.email && errors.email ? 'login-email-error' : undefined}
+              onBlur={() => handleBlur('email')}
+              onChange={(e) => handleChange('email', e.target.value)}
               placeholder="you@example.com"
             />
-            {touched && emailError && <small className="field-error">{emailError}</small>}
+            {touched.email && errors.email && (
+              <small id="login-email-error" className="field-error" role="alert">
+                {errors.email}
+              </small>
+            )}
           </label>
 
-          <label>
-            <span>
-              <LockKeyhole size={16} />
-              Password
+          <label htmlFor="login-password">
+            <span className="field-label-text">
+              <LockKeyhole size={16} /> Password
             </span>
 
-            <input
-              type="password"
-              required
-              maxLength={128}
-              autoComplete="current-password"
-              value={form.password}
-              onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
-              placeholder="••••••••"
-            />
+            <div className="password-input-wrap">
+              <input
+                id="login-password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                required
+                maxLength={PASSWORD_MAX_LENGTH}
+                autoComplete="current-password"
+                value={form.password}
+                aria-invalid={Boolean(touched.password && errors.password)}
+                aria-describedby={touched.password && errors.password ? 'login-password-error' : undefined}
+                onBlur={() => handleBlur('password')}
+                onChange={(e) => handleChange('password', e.target.value)}
+                placeholder="Enter your password"
+              />
+              <button
+                type="button"
+                className="password-toggle-btn"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                title={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            {touched.password && errors.password && (
+              <small id="login-password-error" className="field-error" role="alert">
+                {errors.password}
+              </small>
+            )}
           </label>
 
           <div className="form-between">
             <span />
-            <Link to="/forgot-password">Forgot password?</Link>
+            <Link to="/forgot-password" className="forgot-password-link">Forgot password?</Link>
           </div>
 
-          <button className="button button-lg full" disabled={busy}>
-            {busy ? 'Signing in...' : 'Sign in'}
+          <button
+            type="submit"
+            className="button button-lg full auth-submit-btn"
+            disabled={busy}
+            aria-busy={busy}
+          >
+            {busy ? (
+              <>
+                <span className="button-spinner" aria-hidden="true" />
+                Signing in...
+              </>
+            ) : (
+              'Sign in'
+            )}
           </button>
 
           <p className="auth-switch">
             New here? <Link to="/register">Create an account</Link>
           </p>
-
-          <div className="demo-note">
-            <strong>Demo admin</strong>
-            <span>admin@customgift.dev / Admin@123</span>
-          </div>
         </form>
       </div>
     </div>

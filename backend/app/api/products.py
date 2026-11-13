@@ -22,6 +22,42 @@ ALLOWED_SORTS = {
     "rating": (Product.rating.desc(), Product.created_at.desc()),
 }
 
+# Authoritative canonical category mapping and alias resolution
+CATEGORY_CANONICAL_MAP: dict[str, str] = {
+    "mugs": "Mugs",
+    "mug": "Mugs",
+    "customize mugs": "Mugs",
+    "customized mugs": "Mugs",
+    "photo mugs": "Mugs",
+    "frames": "Frames",
+    "frame": "Frames",
+    "photo frames": "Frames",
+    "photo frame": "Frames",
+    "memory frames": "Frames",
+    "hampers": "Hampers",
+    "hamper": "Hampers",
+    "gift hampers": "Hampers",
+    "gift hamper": "Hampers",
+    "celebration hampers": "Hampers",
+    "decor": "Decor",
+    "home decor": "Decor",
+    "personalized lamps": "Decor",
+    "lamps": "Decor",
+    "lamp": "Decor",
+    "cushions": "Decor",
+    "cushion": "Decor",
+    "keepsakes": "Keepsakes",
+    "keepsake": "Keepsakes",
+    "photo gifts": "Photo Gifts",
+    "photo gift": "Photo Gifts",
+    "personalized photo gifts": "Photo Gifts",
+    "personalized accessories": "Personalized Accessories",
+    "accessories": "Personalized Accessories",
+    "accessory": "Personalized Accessories",
+    "keychains": "Personalized Accessories",
+    "personalized gifts": "Personalized Accessories",
+}
+
 
 @router.get("", response_model=ProductList)
 def list_products(
@@ -30,6 +66,8 @@ def list_products(
     min_price: Decimal | None = Query(default=None, ge=0),
     max_price: Decimal | None = Query(default=None, ge=0),
     in_stock: bool | None = Query(default=None),
+    customizable: bool | None = Query(default=None),
+    discounted: bool | None = Query(default=None),
     featured: bool | None = Query(default=None),
     sort_by: str = Query(default="featured", pattern="^(featured|newest|price_asc|price_desc|rating)$"),
     page: int = Query(default=1, ge=1),
@@ -54,8 +92,15 @@ def list_products(
             )
         )
 
-    if category and category.lower() != "all":
-        conditions.append(func.lower(Product.category) == category.lower().strip())
+    if category and category.strip().lower() != "all":
+        raw_cat = category.strip().lower()
+        canonical = CATEGORY_CANONICAL_MAP.get(raw_cat)
+        if canonical:
+            aliases = [k for k, v in CATEGORY_CANONICAL_MAP.items() if v == canonical]
+            aliases.append(canonical.lower())
+            conditions.append(func.trim(func.lower(Product.category)).in_(aliases))
+        else:
+            conditions.append(func.trim(func.lower(Product.category)) == raw_cat)
 
     if min_price is not None:
         conditions.append(Product.price >= min_price)
@@ -67,6 +112,16 @@ def list_products(
         conditions.append(Product.stock > 0)
     elif in_stock is False:
         conditions.append(Product.stock == 0)
+
+    if customizable is True:
+        conditions.append(Product.customizable.is_(True))
+    elif customizable is False:
+        conditions.append(Product.customizable.is_(False))
+
+    if discounted is True:
+        conditions.append(Product.discount_percent > 0)
+    elif discounted is False:
+        conditions.append(Product.discount_percent == 0)
 
     if featured is not None:
         conditions.append(Product.is_featured.is_(featured))
@@ -94,14 +149,24 @@ def list_products(
 
 @router.get("/categories", response_model=list[str])
 def categories(db: Session = Depends(get_db)):
-    return list(
-        db.scalars(
-            select(Product.category)
-            .where(Product.is_active.is_(True))
-            .distinct()
-            .order_by(Product.category)
-        ).all()
-    )
+    raw_categories = db.scalars(
+        select(func.trim(Product.category))
+        .where(Product.is_active.is_(True))
+        .distinct()
+    ).all()
+
+    seen: dict[str, str] = {}
+    for raw in raw_categories:
+        if not raw or not raw.strip():
+            continue
+        cleaned = raw.strip()
+        canonical = CATEGORY_CANONICAL_MAP.get(cleaned.lower(), cleaned)
+        key = canonical.lower()
+        if key not in seen:
+            seen[key] = canonical
+
+    # Return distinct sorted categories
+    return sorted(seen.values(), key=lambda x: x.lower())
 
 
 @router.get("/{identifier}", response_model=ProductPublic)

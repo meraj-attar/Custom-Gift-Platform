@@ -94,16 +94,11 @@ export default function ResetPassword() {
     setBusy(true)
 
     try {
-      await api.post(
-        '/auth/reset-password',
-        {
-          token,
-          new_password:
-            password,
-          confirm_password:
-            confirmPassword,
-        },
-      )
+      await api.post('/auth/reset-password', {
+        reset_token: token,
+        new_password: password,
+        confirm_password: confirmPassword,
+      })
 
       toast.success(
         'Password updated successfully. Please sign in.',

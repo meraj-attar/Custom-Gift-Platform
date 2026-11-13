@@ -8,6 +8,7 @@ import { useEffect } from 'react'
 
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
+import SignOutConfirmationModal from './components/SignOutConfirmationModal'
 
 import {
   AdminRoute,
@@ -28,8 +29,8 @@ import OrderDetails from './pages/OrderDetails'
 import About from './pages/About'
 import Contact from './pages/Contact'
 import AdminDashboard from './pages/AdminDashboard'
-import CustomizationStudio from './pages/CustomizationStudio'
 import Wishlist from './pages/Wishlist'
+import Profile from './pages/Profile'
 import NotFound from './pages/NotFound'
 
 
@@ -65,13 +66,6 @@ export default function App() {
           <Route
             path="/shop"
             element={<Shop />}
-          />
-
-          <Route
-            path="/studio"
-            element={
-              <CustomizationStudio />
-            }
           />
 
           <Route
@@ -147,6 +141,15 @@ export default function App() {
           />
 
           <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/about"
             element={<About />}
           />
@@ -173,6 +176,7 @@ export default function App() {
       </main>
 
       <Footer />
+      <SignOutConfirmationModal />
     </div>
   )
 }

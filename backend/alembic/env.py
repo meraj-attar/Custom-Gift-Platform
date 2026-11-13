@@ -5,7 +5,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import settings
 from app.core.database import Base
-from app.models import ContactMessage, Order, OrderItem, Product, User, WishlistItem  # noqa: F401
+from app.models import Address, ContactMessage, Order, OrderItem, PasswordResetOTP, Payment, Product, StoreSetting, User, WishlistItem  # noqa: F401
 
 
 config = context.config

@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     razorpay_key_id: str | None = None
     razorpay_key_secret: str | None = None
-    payment_demo_mode: bool = True
+    payment_demo_mode: bool = False
 
     cloudinary_cloud_name: str | None = None
     cloudinary_api_key: str | None = None
@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     smtp_username: str | None = None
     smtp_password: str | None = None
     smtp_from_email: str | None = None
+    smtp_from_name: str = "CustomGift"
+    smtp_use_tls: bool = True
 
     admin_name: str = "CustomGift Admin"
     admin_email: str = "admin@customgift.dev"
@@ -39,7 +41,15 @@ class Settings(BaseSettings):
     media_root: Path = Path("media")
     max_upload_mb: int = 5
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=("backend/.env", ".env", "../.env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    @property
+    def smtp_configured(self) -> bool:
+        return bool(self.smtp_host and self.smtp_username and self.smtp_password)
 
     @property
     def cors_origin_list(self) -> list[str]:

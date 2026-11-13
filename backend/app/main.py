@@ -7,12 +7,15 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from app.api import (
+    addresses,
     admin,
     auth,
+    cart,
     contact,
     orders,
     payments,
     products,
+    settings as settings_api,
     wishlist,
 )
 from app.core.config import settings
@@ -40,10 +43,24 @@ async def lifespan(_: FastAPI):
     )
 
     if settings.app_env == "development":
-        # SQLite can create its schema automatically during development.
-        # PostgreSQL schema changes are managed only through Alembic.
+        # Ensure all models are created in development (both SQLite and PostgreSQL)
+        Base.metadata.create_all(bind=engine)
+
         if settings.database_url.startswith("sqlite"):
-            Base.metadata.create_all(bind=engine)
+            with engine.connect() as conn:
+                existing_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(orders)"))}
+                new_cols = [
+                    ("address_line2", "VARCHAR(255)"),
+                    ("landmark", "VARCHAR(150)"),
+                    ("delivery_option", "VARCHAR(30) DEFAULT 'standard'"),
+                    ("shipping_fee", "NUMERIC(10, 2) DEFAULT 0.00"),
+                    ("subtotal", "NUMERIC(10, 2)"),
+                    ("estimated_delivery", "VARCHAR(80)"),
+                ]
+                for col_name, col_type in new_cols:
+                    if col_name not in existing_cols:
+                        conn.execute(text(f"ALTER TABLE orders ADD COLUMN {col_name} {col_type}"))
+                conn.commit()
 
         seed_database()
 
@@ -113,6 +130,21 @@ app.include_router(
 
 app.include_router(
     contact.router,
+    prefix=settings.api_prefix,
+)
+
+app.include_router(
+    cart.router,
+    prefix=settings.api_prefix,
+)
+
+app.include_router(
+    addresses.router,
+    prefix=settings.api_prefix,
+)
+
+app.include_router(
+    settings_api.router,
     prefix=settings.api_prefix,
 )
 
