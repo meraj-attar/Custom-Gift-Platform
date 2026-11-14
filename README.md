@@ -1,196 +1,177 @@
-# CustomGift — Full-Stack Personalized E-Commerce Platform
+A full-stack e-commerce platform designed to make gifting simple, personalized, and convenient. Customers can explore products, manage their shopping cart, place orders, make secure online payments, and submit personalized gift customization requests through WhatsApp.
 
-CustomGift is a portfolio-ready e-commerce application for personalized gifts. It is a complete rebuild of an earlier Flask/Jinja prototype using a separated React frontend and FastAPI REST backend, with secure authentication, role-based administration, personalized order items, payment verification, migrations, tests and Docker.
-
-## Tech stack
-
-**Frontend:** React 18, Vite, React Router, Axios, Lucide icons, responsive custom CSS  
-**Backend:** FastAPI, Python, SQLAlchemy 2, Pydantic, JWT, scrypt password hashing  
-**Database:** PostgreSQL in Docker; SQLite fallback for local backend development  
-**Payments:** Razorpay with server-side signature verification; safe demo-payment mode without credentials  
-**Media:** Cloudinary when configured; validated local fallback  
-**DevOps:** Docker Compose, Nginx, Alembic, pytest, GitHub Actions CI
-
-## Features
-
-- Responsive, polished storefront with featured gifts, categories, search and product details.
-- Dynamic personalization fields per product: photo, message, occasion and event date.
-- Secure customer photo upload with MIME/content validation, image dimension limits and metadata-stripping re-encoding.
-- Persistent gift bag and multi-item checkout.
-- JWT authentication, scrypt password hashing and password-reset tokens.
-- Customer-only order history and order-detail ownership checks.
-- Order lifecycle: confirmed → processing → customizing → shipped → delivered.
-- Cash on delivery and Razorpay checkout.
-- Razorpay orders created server-side and payments accepted only after signature verification.
-- Demo payment mode so reviewers can exercise the payment flow without real credentials.
-- Admin dashboard with metrics, product CRUD, image upload, inventory, users, fulfillment controls and protected personalization previews.
-- PostgreSQL schema migrations with Alembic.
-- Seeded demo catalog using product imagery retained from the original project.
-- API tests for authentication and cross-user order authorization.
-- Dockerized frontend/backend/database and CI workflow.
-
-## Project structure
-
-```text
+The platform also provides an admin dashboard to manage products, orders, customers, payments, inventory, and customer inquiries.
+- User registration, login, and authentication
+- Browse products with search, filtering, and sorting
+- Product details and product categories
+- Shopping cart management
+- Wishlist and customer profile
+- Secure checkout with delivery address management
+- Multiple payment options:
+  - Razorpay online payments
+  - Cash on Delivery (COD)
+- Order confirmation and order history
+- Password recovery and reset
+- WhatsApp-based gift customization inquiries
+- Responsive interface for desktop, tablet, and mobile
+- Admin dashboard and analytics
+- Product and category management
+- Order management and status updates
+- Payment management
+- Inventory management
+- Customer and user management
+- Customer inquiry management
+- Store settings and configuration
+- JWT-based authentication
+- Role-based access control (RBAC)
+- Password hashing
+- Request validation
+- Rate limiting
+- Security middleware
+- Database migrations using Alembic
+- Payment signature verification
+- Automated backend and frontend tests
+Layer	Technologies
+Frontend	React.js, Vite, JavaScript
+UI & Styling	CSS, Lucide React
+Backend	Python, FastAPI
+Database	PostgreSQL
+ORM	SQLAlchemy
+Database Migrations	Alembic
+Validation	Pydantic
+Authentication	JWT
+Payment Gateway	Razorpay
+Customization Enquiries	WhatsApp Integration
+Testing	Pytest, Vitest
+Containerization	Docker, Docker Compose
+Version Control	Git, GitHub
+```
 CustomGift-Platform/
+│
 ├── backend/
 │   ├── app/
-│   │   ├── api/            # REST routers
-│   │   ├── core/           # config, database, security
-│   │   ├── dependencies/   # auth/RBAC dependencies
-│   │   ├── models/         # SQLAlchemy models
-│   │   ├── schemas/        # Pydantic request/response models
-│   │   ├── services/       # uploads, email, payments, slugs
+│   │   ├── api/             # REST API routers
+│   │   ├── core/            # Configuration, database, security
+│   │   ├── dependencies/    # Authentication and RBAC dependencies
+│   │   ├── models/          # SQLAlchemy models
+│   │   ├── schemas/         # Pydantic request/response models
+│   │   ├── services/        # Business logic, email and payments
 │   │   ├── main.py
 │   │   └── seed.py
-│   ├── alembic/            # database migrations
-│   ├── tests/
+│   │
+│   ├── alembic/             # Database migrations
+│   ├── tests/               # Backend test cases
 │   ├── Dockerfile
 │   └── requirements.txt
+│
 ├── frontend/
-│   ├── public/products/    # curated original product imagery
+│   ├── public/
+│   │   └── products/        # Product images
+│   │
 │   ├── src/
-│   │   ├── components/
-│   │   ├── context/
-│   │   ├── pages/
-│   │   ├── services/
-│   │   └── styles/
+│   │   ├── components/      # Reusable UI components
+│   │   ├── context/         # React context providers
+│   │   ├── pages/           # Application pages
+│   │   ├── services/        # API integration
+│   │   └── styles/          # Application styles
+│   │
 │   ├── Dockerfile
 │   └── package.json
-├── docs/ARCHITECTURE.md
+│
+├── docs/
+│   └── ARCHITECTURE.md
+│
 ├── docker-compose.yml
 └── README.md
 ```
-
-
-Open:
-
-- Storefront: `http://localhost:5173`
-- FastAPI docs: `http://localhost:8000/docs`
-- Health check: `http://localhost:8000/health`
-
-The default demo admin is:
-
-
-
-Change those values in `.env` before deploying anywhere public.
-
-## Run without Docker
-
-### Backend
-
-```bash
+Make sure you have the following installed:
+- Python 3.11+
+- Node.js and npm
+- PostgreSQL 17+
+- Git
+- Docker Desktop (optional)
+```
+git clone https://github.com/meraj-attar/Custom-Gift-Platform.git
+cd Custom-Gift-Platform
+```
+Navigate to the backend directory:
+```
 cd backend
+```
+Create and activate a virtual environment.
+
+Windows PowerShell:
+```
 python -m venv .venv
-# Linux/macOS: source .venv/bin/activate
-# Windows: .venv\Scripts\activate
+.venv\Scripts\Activate.ps1
+```
+Install dependencies:
+```
 pip install -r requirements.txt
-cp .env.example .env
 ```
-
-For a zero-setup development database, change `DATABASE_URL` in `backend/.env` to:
-
-```text
-DATABASE_URL=sqlite:///./customgift.db
-APP_ENV=development
+Create your environment file using the example:
 ```
+Copy-Item .env.example .env
+```
+Configure your database URL and required environment variables in backend/.env.
 
-Then run:
-
-```bash
+Run database migrations:
+```
+alembic upgrade head
+```
+Start the backend server:
+```
 uvicorn app.main:app --reload
 ```
+Backend API:
 
-Development mode creates the SQLite tables and seeds the catalog/admin idempotently.
+http://localhost:8000
 
-### Frontend
+Interactive API documentation:
 
-```bash
+http://localhost:8000/docs
+Open another terminal and navigate to the frontend directory:
+```
 cd frontend
+```
+Install dependencies:
+```
 npm install
-cp .env.example .env
+```
+Create the frontend environment file:
+```
+Copy-Item .env.example .env
+```
+Configure the backend API URL according to your frontend environment configuration.
+
+Start the development server:
+```
 npm run dev
 ```
+Open the local URL displayed by Vite in your terminal.
+Docker Compose configuration is available for running the application using containers.
 
-## PostgreSQL migrations
-
-Docker runs these automatically. Manually:
-
-```bash
-cd backend
-alembic upgrade head
-python -m app.seed
+From the project root:
 ```
-
-To generate a future migration after changing SQLAlchemy models:
-
-```bash
-alembic revision --autogenerate -m "describe change"
-alembic upgrade head
+docker compose up --build
 ```
-
-## Razorpay modes
-
-### Demo mode
-
-Default:
-
-```text
-PAYMENT_DEMO_MODE=true
+To stop the containers:
 ```
-
-The frontend still exercises the order → payment-order → payment-completion backend flow, but no external payment is collected.
-
-### Live/test Razorpay integration
-
-Set:
-
-```text
-PAYMENT_DEMO_MODE=false
-RAZORPAY_KEY_ID=...
-RAZORPAY_KEY_SECRET=...
+docker compose down
 ```
-
-The backend creates the Razorpay order. The React checkout opens Razorpay Checkout and sends `razorpay_order_id`, `razorpay_payment_id` and `razorpay_signature` back to FastAPI. The order is marked `PAID` only after the backend verifies the signature.
-
-## Cloudinary
-
-Add the three Cloudinary values in `.env` to store new product and personalization images in Cloudinary. Without them, product images use the backend media folder while customer customization images are stored outside the publicly mounted static path.
-
-## Password reset
-
-Configure SMTP values for real email delivery. During local `APP_ENV=development`, the API also returns the generated reset URL so the complete flow can be tested without an SMTP account. Production mode does not expose it.
-
-## Tests
-
-```bash
-cd backend
-pytest -q
+Check docker-compose.yml for configured services, ports, and environment requirements.
+CustomGift Platform integrates Razorpay for online payments.
+- Razorpay Test Mode is used for development and testing.
+- Payment orders are created through the backend.
+- Payment signatures are verified on the backend.
+- Cash on Delivery is also supported.
+Important: Never commit actual API keys, secrets, passwords, or production credentials to GitHub. Configure them through environment variables.
+From the backend directory:
 ```
-
-The included test suite covers authentication, admin authorization, cross-user order isolation, customization validation, server-calculated totals, demo payments and fulfillment/payment state rules.
-
-## Production checklist
-
-- Replace the JWT secret and seeded admin credentials.
-- Set strict production CORS origins.
-- Configure HTTPS at your reverse proxy or hosting platform.
-- Disable payment demo mode only after valid Razorpay credentials are configured.
-- Use Cloudinary/S3-style managed storage for persistent customer uploads.
-- Configure SMTP and rate limiting.
-- Run Alembic migrations as part of deployment.
-
-See [`SECURITY.md`](SECURITY.md) for additional notes.
-
-## Resume description
-
-**CustomGift — Full-Stack Personalized E-Commerce Platform**  
-**React.js · FastAPI · PostgreSQL · SQLAlchemy · JWT · Razorpay · Cloudinary · Docker**
-
-- Built a full-stack personalized-gifting e-commerce platform with a React SPA and FastAPI REST API.
-- Designed normalized order/item models and dynamic product customization for customer photos, text, occasions and dates.
-- Implemented JWT authentication, role-based access control, scrypt password hashing and ownership-protected customer resources.
-- Integrated Razorpay with backend order creation and server-side signature verification plus a credential-free demo mode.
-- Built an admin dashboard for catalog, inventory, users, payments and fulfillment-status management.
-- Used PostgreSQL, SQLAlchemy and Alembic migrations, with optional Cloudinary media storage.
-- Added automated API tests, Docker Compose, Nginx and GitHub Actions CI.
+pytest
+```
+From the frontend directory:
+```
+npm test
+```
+Use the test scripts defined in frontend/package.json if the test command differs.
