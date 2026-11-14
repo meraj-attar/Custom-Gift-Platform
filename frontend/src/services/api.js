@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-export const API_URL = import.meta.env.VITE_API_URL || '/api'
+export const API_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) || '/api'
 export const API_ORIGIN = API_URL.replace(/\/api\/?$/, '')
 
 const api = axios.create({
@@ -49,7 +49,20 @@ export const getErrorMessage = (error) => {
   // Parse structured FastAPI validation errors (422)
   if (status === 422 && data) {
     if (Array.isArray(data.detail)) {
-      return data.detail.map((item) => item.msg || item).join(', ')
+      return (
+        data.detail
+          .map((item) => {
+            if (!item) return ''
+            if (typeof item === 'string') return item
+            const field = Array.isArray(item.loc)
+              ? item.loc.filter((part) => part !== 'body' && part !== 'query').join('.')
+              : ''
+            const msg = item.msg || 'Invalid input'
+            return field ? `${field}: ${msg}` : msg
+          })
+          .filter(Boolean)
+          .join(', ') || 'Validation error. Please verify your input.'
+      )
     }
     if (typeof data.detail === 'string') {
       return data.detail

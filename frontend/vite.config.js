@@ -9,7 +9,11 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: {
       port: 5173,
-      allowedHosts: ['kit-supply-route-trace.trycloudflare.com'],
+      allowedHosts: [
+        'dist-diff-ciao-dialogue.trycloudflare.com',
+        'kit-supply-route-trace.trycloudflare.com',
+        '.trycloudflare.com',
+      ],
       proxy: {
         '/api': {
           target: apiTarget,

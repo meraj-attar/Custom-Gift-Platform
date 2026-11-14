@@ -288,3 +288,19 @@ def test_pagination_and_combined_filters(client, db):
     page1_ids = {x["id"] for x in data["items"]}
     page2_ids = {x["id"] for x in data_page2["items"]}
     assert not (page1_ids & page2_ids)
+
+
+def test_product_page_size_constraints(client, db):
+    seed_test_products(db)
+
+    # Valid page sizes up to 100
+    res_50 = client.get("/api/products?page_size=50")
+    assert res_50.status_code == 200
+
+    res_100 = client.get("/api/products?page_size=100")
+    assert res_100.status_code == 200
+
+    # Over 100 should be rejected by validation
+    res_101 = client.get("/api/products?page_size=101")
+    assert res_101.status_code == 422
+    assert "100" in res_101.text

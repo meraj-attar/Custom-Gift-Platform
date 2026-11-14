@@ -71,7 +71,7 @@ def list_products(
     featured: bool | None = Query(default=None),
     sort_by: str = Query(default="featured", pattern="^(featured|newest|price_asc|price_desc|rating)$"),
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=12, ge=1, le=50),
+    page_size: int = Query(default=12, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
     if min_price is not None and max_price is not None and min_price > max_price:

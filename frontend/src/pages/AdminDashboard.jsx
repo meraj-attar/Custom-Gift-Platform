@@ -68,6 +68,8 @@ export default function AdminDashboard() {
   const [products, setProducts] = useState([])
   const [orders, setOrders] = useState([])
   const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
 
   // Payments State
   const [payments, setPayments] = useState([])
@@ -119,21 +121,66 @@ export default function AdminDashboard() {
 
   // Load primary dashboard data
   const loadAll = async () => {
+    setLoading(true)
+    setLoadError(null)
     try {
-      const [s, a, p, o, u] = await Promise.all([
+      const [sRes, aRes, pRes, oRes, uRes] = await Promise.allSettled([
         api.get('/admin/stats'),
         api.get('/admin/analytics'),
-        api.get('/products?page_size=100'),
+        api.get('/products?page_size=50'),
         api.get('/orders/admin/all'),
         api.get('/admin/users'),
       ])
-      setStats(s.data)
-      setAnalytics(a.data)
-      setProducts(p.data.items)
-      setOrders(o.data)
-      setUsers(u.data)
+
+      let primaryFailed = false
+      let firstError = null
+
+      if (sRes.status === 'fulfilled') {
+        setStats(sRes.value.data)
+      } else {
+        primaryFailed = true
+        firstError = sRes.reason
+        console.error('Failed to load stats:', sRes.reason)
+      }
+
+      if (aRes.status === 'fulfilled') {
+        setAnalytics(aRes.value.data)
+      } else {
+        console.warn('Failed to load analytics:', aRes.reason)
+      }
+
+      if (pRes.status === 'fulfilled') {
+        setProducts(pRes.value.data.items || [])
+      } else {
+        console.warn('Failed to load products:', pRes.reason)
+        if (!firstError) firstError = pRes.reason
+      }
+
+      if (oRes.status === 'fulfilled') {
+        setOrders(oRes.value.data || [])
+      } else {
+        console.warn('Failed to load orders:', oRes.reason)
+        if (!firstError) firstError = oRes.reason
+      }
+
+      if (uRes.status === 'fulfilled') {
+        setUsers(uRes.value.data || [])
+      } else {
+        console.warn('Failed to load users:', uRes.reason)
+        if (!firstError) firstError = uRes.reason
+      }
+
+      if (primaryFailed && !stats) {
+        const errorMsg = getErrorMessage(firstError)
+        setLoadError(errorMsg)
+        toast.error(errorMsg, { id: 'admin-load-error' })
+      }
     } catch (error) {
-      toast.error(getErrorMessage(error))
+      const errorMsg = getErrorMessage(error)
+      setLoadError(errorMsg)
+      toast.error(errorMsg, { id: 'admin-load-error' })
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -151,7 +198,7 @@ export default function AdminDashboard() {
       setPayments(data.items || [])
       setPaymentTotal(data.total || 0)
     } catch (error) {
-      toast.error(getErrorMessage(error))
+      toast.error(getErrorMessage(error), { id: 'admin-payments-error' })
     }
   }, [paymentFilter, paymentSearch])
 
@@ -168,7 +215,7 @@ export default function AdminDashboard() {
       const { data } = await api.get(`/admin/inventory?${params.toString()}`)
       setInventoryItems(data.items || [])
     } catch (error) {
-      toast.error(getErrorMessage(error))
+      toast.error(getErrorMessage(error), { id: 'admin-inventory-error' })
     }
   }, [inventoryFilter, inventorySearch])
 
@@ -178,7 +225,7 @@ export default function AdminDashboard() {
       const { data } = await api.get('/admin/categories')
       setCategories(data || [])
     } catch (error) {
-      toast.error(getErrorMessage(error))
+      toast.error(getErrorMessage(error), { id: 'admin-categories-error' })
     }
   }
 
@@ -188,7 +235,7 @@ export default function AdminDashboard() {
       const { data } = await api.get('/admin/settings')
       setStoreSettings(data)
     } catch (error) {
-      toast.error(getErrorMessage(error))
+      toast.error(getErrorMessage(error), { id: 'admin-settings-error' })
     }
   }
 
@@ -207,7 +254,7 @@ export default function AdminDashboard() {
       setContactTotal(data.total || 0)
       setContactUnread(data.unread_count || 0)
     } catch (error) {
-      toast.error(getErrorMessage(error))
+      toast.error(getErrorMessage(error), { id: 'admin-contact-error' })
     }
   }, [contactFilter, contactSearch])
 
@@ -436,10 +483,40 @@ export default function AdminDashboard() {
     }
   }
 
-  if (!stats) {
+  if (loading && !stats) {
     return (
       <div className="page-loader">
         <span className="spinner" />
+        <p style={{ marginTop: '16px', color: 'var(--muted)', fontSize: '14px' }}>Loading Admin Dashboard...</p>
+      </div>
+    )
+  }
+
+  if (loadError && !stats) {
+    return (
+      <div className="admin-page">
+        <div className="container" style={{ textAlign: 'center', padding: '60px 20px' }}>
+          <div
+            style={{
+              maxWidth: '480px',
+              margin: '0 auto',
+              background: 'white',
+              padding: '36px 24px',
+              borderRadius: '20px',
+              border: '1px solid var(--line)',
+              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)',
+            }}
+          >
+            <AlertTriangle size={44} color="var(--red)" style={{ margin: '0 auto 14px' }} />
+            <h2 style={{ margin: '0 0 8px', fontSize: '20px' }}>Unable to Load Admin Dashboard</h2>
+            <p style={{ color: 'var(--muted)', fontSize: '13px', margin: '0 0 20px', lineHeight: '1.5' }}>
+              {loadError}
+            </p>
+            <button className="button" type="button" onClick={loadAll} style={{ margin: '0 auto' }}>
+              <RefreshCw size={15} /> Retry
+            </button>
+          </div>
+        </div>
       </div>
     )
   }
